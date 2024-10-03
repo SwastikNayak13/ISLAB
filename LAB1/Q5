@@ -1,0 +1,37 @@
+The situation you described involves John using information from the text to decipher a ciphertext. Let's break down the details:
+Given:
+
+    Ciphertext: "CIW"
+    Plaintext: "yes"
+    New Ciphertext: "XVIEWYWI"
+
+Analysis:
+
+    Type of Cipher:
+        The author indicates that the ciphertext "CIW" is encrypted using a shift cipher (also known as a Caesar cipher), which is a type of substitution cipher where each letter in the plaintext is shifted by a fixed number down the alphabet.
+
+    Determining the Shift:
+        To find the shift used for the encryption, we compare the ciphertext "CIW" with the plaintext "yes":
+            C (2) -> y (24) : The shift here is 24 - 2 = 22 (or -4 if viewed as a right shift).
+            I (8) -> e (4) : The shift is 4 - 8 = -4.
+            W (22) -> s (18) : The shift is 18 - 22 = -4.
+        This indicates that the shift used is 4 to the left (or 22 to the right).
+
+    Decoding the New Ciphertext:
+        To decipher "XVIEWYWI" using the same shift of 4:
+            X (23) -> T (19)
+            V (21) -> R (17)
+            I (8) -> E (4)
+            E (4) -> A (0)
+            Y (24) -> U (20)
+            W (22) -> S (18)
+            I (8) -> E (4)
+
+Putting this together:
+
+    "XVIEWYWI" decrypted becomes "TREASURE".
+
+Conclusion:
+
+    Type of Attack: This is an example of a known-plaintext attack. John knows the relationship between the known ciphertext ("CIW") and its corresponding plaintext ("yes"), which allows him to deduce the shift used in the cipher. He then applies that shift to the new ciphertext ("XVIEWYWI") to derive the plaintext.
+    Plaintext: The plaintext for "XVIEWYWI" is "TREASURE".
