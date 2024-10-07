@@ -1,47 +1,56 @@
-from Crypto.PublicKey import ElGamal
-from Crypto.Random import get_random_bytes
-from Crypto.Random.random import randint
-from Crypto.Util.number import GCD
+import random
+from hashlib import sha256
 
-# Key Generation
-key = ElGamal.generate(256, get_random_bytes)
-public_key = (int(key.p), int(key.g), int(key.y))  # Ensure all are integers
-private_key = int(key.x)  # Ensure the private key is an integer
+# Generate large prime number p, generator g, private key x, public key y
+def generate_keys(bit_length=256):
+    p = random.getrandbits(bit_length)
+    g = random.randint(2, p-1)
+    x = random.randint(1, p-1)  # Private key
+    y = pow(g, x, p)  # Public key
+    return p, g, x, y
 
+# Hash function for the message
+def hash_message(message):
+    return int(sha256(message.encode('utf-8')).hexdigest(), 16)
 
-# Encryption
-def elgamal_encrypt(message, key):
-    p, g, y = int(key.p), int(key.g), int(key.y)  # Convert to native Python integers
-    k = randint(1, p - 2)
-    while GCD(k, p - 1) != 1:
-        k = randint(1, p - 2)
-    c1 = pow(g, k, p)
-    c2 = (message * pow(y, k, p)) % p
-    return (c1, c2)
+# Signing function
+def sign_message(message, p, g, x):
+    h = hash_message(message)
+    while True:
+        k = random.randint(1, p-2)
+        if gcd(k, p-1) == 1:
+            break
+    r = pow(g, k, p)
+    s = (h - x * r) * pow(k, -1, p-1) % (p-1)
+    return r, s
 
+# Verification function
+def verify_signature(message, r, s, p, g, y):
+    h = hash_message(message)
+    if not (0 < r < p):
+        return False
+    v1 = pow(g, h, p)
+    v2 = (pow(y, r, p) * pow(r, s, p)) % p
+    return v1 == v2
 
-# Decryption
-def elgamal_decrypt(cipher_text, key):
-    c1, c2 = cipher_text
-    p = int(key.p)  # Convert to native Python integer
-    s = pow(c1, int(key.x), p)  # Convert to native Python integers
-    # Use pow to compute the modular inverse
-    s_inv = pow(s, p - 2, p)  # Fermat's Little Theorem
-    return (c2 * s_inv) % p
-
+# Helper function: Calculate gcd
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
 
 # Example usage
-message = 4441
-cipher_text = elgamal_encrypt(message, key)
-decrypted_message = elgamal_decrypt(cipher_text, key)
+if __name__ == "__main__":
+    # Key generation
+    p, g, x, y = generate_keys()
 
-print("Original message:", message)
-print("Encrypted message:", cipher_text)
-print("Decrypted message:", decrypted_message)
+    # Message to sign
+    message = "Hello, ElGamal Digital Signature!"
 
-"""
-Output:
-Original message: 4441
-Encrypted message: (36885507269050816452521241110201113994024314479158945324704607565400925974332, 84005621770667733674079560558995776817276579165352124261201821962284727224889)
-Decrypted message: 4441
-"""
+    # Signing the message
+    r, s = sign_message(message, p, g, x)
+    print(f"Signature: (r, s) = ({r}, {s})")
+
+    # Verifying the signature
+    valid = verify_signature(message, r, s, p, g, y)
+    print(f"Signature valid: {valid}")
