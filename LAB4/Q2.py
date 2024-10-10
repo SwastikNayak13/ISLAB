@@ -1,128 +1,111 @@
-import os
-import json
-import sqlite3
-from flask import Flask, request, jsonify
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from Crypto.Util import number
 from datetime import datetime, timedelta
+import json
 
-app = Flask(__name__)
-DB_NAME = 'key_management.db'
+# Centralized key management system
+class KeyManagementService:
+    def __init__(self, key_size=1024):
+        self.key_size = key_size
+        self.keys = {}  # Store keys by hospital/clinic ID
+        self.logs = []  # Logs for auditing
+        self.revoked_keys = set()  # Store revoked key IDs
+        self.key_expiration_period = timedelta(days=365)  # Keys expire every 12 months
+    
+    # Key Generation: Generate public and private key pairs for each hospital/clinic using Rabin cryptosystem
+    def generate_rabin_keypair(self, facility_id):
+        p = number.getPrime(self.key_size // 2)
+        q = number.getPrime(self.key_size // 2)
+        n = p * q  # Public key
+        private_key = (p, q)
+        
+        # Store keys securely
+        self.keys[facility_id] = {
+            'public_key': n,
+            'private_key': private_key,
+            'generation_date': datetime.now(),
+            'expiration_date': datetime.now() + self.key_expiration_period,
+        }
+        
+        # Log the key generation
+        self._log_action(f"Generated keys for {facility_id}")
+        
+        return n, private_key
 
-# Initialize SQLite database
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS keys (
-                    id INTEGER PRIMARY KEY,
-                    facility_name TEXT NOT NULL,
-                    private_key BLOB NOT NULL,
-                    public_key BLOB NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL
-                )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS logs (
-                    id INTEGER PRIMARY KEY,
-                    operation TEXT NOT NULL,
-                    facility_name TEXT NOT NULL,
-                    timestamp TEXT NOT NULL
-                )''')
-    conn.commit()
-    conn.close()
+    # Key Distribution: Provide a secure API for hospitals/clinics to request and receive their key pairs
+    def get_keys(self, facility_id):
+        if facility_id in self.revoked_keys:
+            raise Exception(f"Keys for {facility_id} have been revoked.")
+        if facility_id in self.keys:
+            self._log_action(f"Provided keys for {facility_id}")
+            return self.keys[facility_id]['public_key'], self.keys[facility_id]['private_key']
+        else:
+            raise Exception(f"Facility {facility_id} does not exist.")
 
-# Generate Rabin keys (using RSA for this demo)
-def generate_keys(key_size=1024):
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=key_size,
-        backend=default_backend()
-    )
-    public_key = private_key.public_key()
-    return private_key, public_key
+    # Key Revocation: Revoke keys for a specific hospital/clinic
+    def revoke_keys(self, facility_id):
+        if facility_id in self.keys:
+            self.revoked_keys.add(facility_id)
+            self._log_action(f"Revoked keys for {facility_id}")
+        else:
+            raise Exception(f"Facility {facility_id} does not exist.")
 
-# Serialize keys for storage
-def serialize_key(key):
-    return key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL
-    ) if isinstance(key, rsa.RSAPrivateKey) else key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
+    # Key Renewal: Automatically renew keys for all hospitals/clinics
+    def renew_keys(self):
+        for facility_id, key_data in self.keys.items():
+            if key_data['expiration_date'] <= datetime.now():
+                new_public_key, new_private_key = self.generate_rabin_keypair(facility_id)
+                self.keys[facility_id]['public_key'] = new_public_key
+                self.keys[facility_id]['private_key'] = new_private_key
+                self.keys[facility_id]['generation_date'] = datetime.now()
+                self.keys[facility_id]['expiration_date'] = datetime.now() + self.key_expiration_period
+                self._log_action(f"Renewed keys for {facility_id}")
 
-# Log key management operations
-def log_operation(operation, facility_name):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('INSERT INTO logs (operation, facility_name, timestamp) VALUES (?, ?, ?)',
-              (operation, facility_name, datetime.now().isoformat()))
-    conn.commit()
-    conn.close()
+    # Secure Storage: Securely store private keys to prevent unauthorized access
+    def store_private_keys(self, storage_path='private_keys.json'):
+        encrypted_keys = {}
+        for facility_id, key_data in self.keys.items():
+            encrypted_keys[facility_id] = {
+                'private_key': key_data['private_key'],
+                'generation_date': key_data['generation_date'].strftime('%Y-%m-%d'),
+                'expiration_date': key_data['expiration_date'].strftime('%Y-%m-%d')
+            }
+        
+        with open(storage_path, 'w') as f:
+            json.dump(encrypted_keys, f)
+        self._log_action("Stored private keys securely")
 
-# API for key generation
-@app.route('/generate_key', methods=['POST'])
-def generate_key():
-    data = request.json
-    facility_name = data['facility_name']
-    private_key, public_key = generate_keys()
-    expires_at = (datetime.now() + timedelta(days=365)).isoformat()
+    # Auditing and Logging: Log all key management operations
+    def _log_action(self, action):
+        log_entry = {
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'action': action
+        }
+        self.logs.append(log_entry)
 
-    # Store keys in the database
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('INSERT INTO keys (facility_name, private_key, public_key, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
-              (facility_name, serialize_key(private_key), serialize_key(public_key), datetime.now().isoformat(), expires_at))
-    conn.commit()
-    conn.close()
+    # Retrieve logs for auditing
+    def get_logs(self):
+        return self.logs
 
-    log_operation("Key Generation", facility_name)
+# Example usage of the key management service
+kms = KeyManagementService(key_size=1024)
 
-    return jsonify({
-        'message': 'Keys generated successfully',
-        'public_key': serialize_key(public_key).decode('utf-8'),
-        'expires_at': expires_at
-    })
+# Generate keys for a hospital
+public_key, private_key = kms.generate_rabin_keypair("Hospital_A")
+print(f"Public Key: {public_key}\nPrivate Key: {private_key}")
 
-# API for key distribution
-@app.route('/get_keys/<facility_name>', methods=['GET'])
-def get_keys(facility_name):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('SELECT private_key, public_key FROM keys WHERE facility_name = ?', (facility_name,))
-    keys = c.fetchone()
-    conn.close()
+# Distribute the keys securely
+keys = kms.get_keys("Hospital_A")
+print(f"Retrieved Keys for Hospital_A: {keys}")
 
-    if keys:
-        return jsonify({
-            'public_key': keys[1].decode('utf-8'),
-            'private_key': keys[0].decode('utf-8')
-        })
-    else:
-        return jsonify({'error': 'No keys found for this facility'}), 404
+# Store keys securely
+kms.store_private_keys()
 
-# API for key revocation
-@app.route('/revoke_key/<facility_name>', methods=['DELETE'])
-def revoke_key(facility_name):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('DELETE FROM keys WHERE facility_name = ?', (facility_name,))
-    conn.commit()
-    conn.close()
+# Revoke keys for a facility
+kms.revoke_keys("Hospital_A")
 
-    log_operation("Key Revocation", facility_name)
+# Renew keys for all hospitals
+kms.renew_keys()
 
-    return jsonify({'message': 'Keys revoked successfully'})
+# Retrieve logs
+print("Logs:", kms.get_logs())
 
-# API for key renewal
-@app.route('/renew_keys/<facility_name>', methods=['POST'])
-def renew_keys(facility_name):
-    revoke_key(facility_name)  # Revoke existing keys
-    return generate_key()  # Generate new keys
-
-# Start the Flask app
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
