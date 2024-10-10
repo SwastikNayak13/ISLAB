@@ -85,3 +85,20 @@ if matching_doc_ids:
 else:
     print(f"No documents found containing the words '{search_term}'.")
 
+'''Explanation:
+
+    Dataset Generation (Step 2a):
+        Created a small corpus of 10 documents containing several words.
+
+    Encryption & Decryption Functions (Step 2b):
+        The Paillier cryptosystem is used to encrypt each character of a word.
+        The decryption function is used to reconstruct the word from its encrypted form.
+
+    Encrypted Inverted Index (Step 2c):
+        A basic inverted index is created by mapping words to document IDs.
+        Each word in the index is encrypted using the Paillier public key.
+
+    Search Function (Step 2d):
+        The search term is encrypted with the public key and searched against the encrypted index.
+        Matching document IDs are decrypted and returned as output.'''
+
