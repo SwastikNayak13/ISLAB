@@ -1,101 +1,87 @@
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-import base64
+from phe import paillier
+import re
 from collections import defaultdict
-from Crypto.Random import get_random_bytes
 
+# 2a. Generate a dataset (text corpus of at least ten documents)
+documents = {
+    1: "the quick brown fox jumps over the lazy dog",
+    2: "never jump over the lazy dog quickly",
+    3: "brown dog jumps over a quick fox",
+    4: "lazy dogs are not quick to jump",
+    5: "quick thinking wins the race over laziness",
+    6: "the fox is brown and quick",
+    7: "jumps happen fast with quick thinking",
+    8: "the lazy dog is fast but not quick",
+    9: "brown foxes are quick and lazy dogs are not",
+    10: "think quickly, jump fast, and win the race"
+}
 
-# Step 1: Generate a text corpus (10 documents)
-documents = [
-    "The quick brown fox jumps over the lazy dog",
-    "Symmetric encryption ensures confidentiality",
-    "Searchable encryption allows secure search over encrypted data",
-    "Cloud storage solutions need to protect privacy",
-    "Encryption and decryption use secret keys",
-    "Data security is essential in today's digital world",
-    "Inverted indexes enable fast full-text searches",
-    "Encryption must be strong to prevent unauthorized access",
-    "Information retrieval in encrypted form is challenging",
-    "Advanced cryptography techniques improve security"
-]
+# 2b. Implement encryption and decryption functions (Paillier cryptosystem)
+public_key, private_key = paillier.generate_paillier_keypair()
 
-# AES encryption and decryption setup for ECB mode
-key = get_random_bytes(16)  # Generate a random key
-cipher = AES.new(key, AES.MODE_ECB)  # Using ECB mode
+# Encryption function
+def encrypt_word(word, public_key):
+    encrypted_word = [public_key.encrypt(ord(char)) for char in word]
+    return encrypted_word
 
-# AES encryption function
-def encrypt_data(data, cipher):
-    data_bytes = pad(data.encode(), AES.block_size)  # Pad the data to match block size
-    encrypted_bytes = cipher.encrypt(data_bytes)  # Encrypt the data
-    return base64.b64encode(encrypted_bytes).decode()  # Encode in base64 for readability
+# Decryption function
+def decrypt_word(encrypted_word, private_key):
+    decrypted_word = ''.join([chr(private_key.decrypt(char)) for char in encrypted_word])
+    return decrypted_word
 
-# AES decryption function
-def decrypt_data(encrypted_data, cipher):
-    encrypted_bytes = base64.b64decode(encrypted_data.encode())
-    decrypted_bytes = unpad(cipher.decrypt(encrypted_bytes), AES.block_size)
-    return decrypted_bytes.decode()
+# 2c. Create an encrypted index (inverted index)
 
-# Step 2a: Build the inverted index (word -> list of document IDs)
-def build_inverted_index(docs):
+# Create a simple inverted index mapping words to document IDs
+def create_inverted_index(docs):
     inverted_index = defaultdict(list)
-    for doc_id, doc in enumerate(docs):
-        words = doc.lower().split()
-        for word in set(words):  # Avoid duplicates
+    for doc_id, text in docs.items():
+        words = set(re.findall(r'\w+', text.lower()))  # Tokenizing words from the document
+        for word in words:
             inverted_index[word].append(doc_id)
     return inverted_index
 
-# Step 2b: Encrypt the index (word -> encrypted document IDs)
-def encrypt_inverted_index(inverted_index, cipher):
-    encrypted_index = {}
-    for word, doc_ids in inverted_index.items():
-        encrypted_word = encrypt_data(word, cipher)  # Encrypt word
-        encrypted_doc_ids = [encrypt_data(str(doc_id), cipher) for doc_id in doc_ids]  # Encrypt document IDs
-        encrypted_index[encrypted_word] = encrypted_doc_ids
-    return encrypted_index
+# Build the inverted index
+inverted_index = create_inverted_index(documents)
 
-# Encrypt a search query
-def encrypt_query(query, cipher):
-    return encrypt_data(query, cipher)
+# Encrypt the inverted index using Paillier encryption
+encrypted_index = {}
+for word, doc_ids in inverted_index.items():
+    encrypted_word = encrypt_word(word, public_key)
+    encrypted_index[tuple(encrypted_word)] = doc_ids
+
+# 2d. Implement the search function
+
+# Encrypt the search query
+def encrypt_query(query, public_key):
+    query_words = re.findall(r'\w+', query.lower())
+    encrypted_query = [encrypt_word(word, public_key) for word in query_words]
+    return encrypted_query
 
 # Search the encrypted index
-def search_encrypted_index(encrypted_query, encrypted_inverted_index):
-    for encrypted_word, encrypted_doc_ids in encrypted_inverted_index.items():
-        if encrypted_word == encrypted_query:
-            return encrypted_doc_ids
-    return []
+def search_encrypted_index(encrypted_query, encrypted_index, private_key):
+    matching_doc_ids = set()
 
-# Decrypt the list of document IDs
-def decrypt_document_ids(encrypted_doc_ids, cipher):
-    decrypted_doc_ids = [decrypt_data(doc_id, cipher) for doc_id in encrypted_doc_ids]
-    return decrypted_doc_ids
+    for enc_word in encrypted_query:
+        decrypted_query_word = decrypt_word(enc_word, private_key)
+        
+        for encrypted_word, doc_ids in encrypted_index.items():
+            if decrypt_word(encrypted_word, private_key) == decrypted_query_word:
+                matching_doc_ids.update(doc_ids)
+                
+    return list(matching_doc_ids)
 
-# Main function
-def main():
-    # Step 1: Build the inverted index from documents
-    inverted_index = build_inverted_index(documents)
+# Take user input for search
+search_term = input("Enter the search query: ")  # Taking input from the user
 
-    # Step 2: Encrypt the inverted index using AES encryption in ECB mode
-    cipher_encrypt = AES.new(key, AES.MODE_ECB)  # ECB mode
-    encrypted_inverted_index = encrypt_inverted_index(inverted_index, cipher_encrypt)
+# Encrypt the query
+encrypted_query = encrypt_query(search_term, public_key)
 
-    # Step 3: Take search query from the user
-    search_query = input("Enter a search query: ").lower()
+# Search in the encrypted index
+matching_doc_ids = search_encrypted_index(encrypted_query, encrypted_index, private_key)
 
-    # Step 4: Encrypt the search query
-    encrypted_query = encrypt_query(search_query, cipher_encrypt)
+# Output the matching document IDs
+if matching_doc_ids:
+    print(f"Documents containing the words '{search_term}': {matching_doc_ids}")
+else:
+    print(f"No documents found containing the words '{search_term}'.")
 
-    # Step 5: Search the encrypted index for matching encrypted document IDs
-    encrypted_doc_ids = search_encrypted_index(encrypted_query, encrypted_inverted_index)
-
-    # Step 6: Decrypt and display the corresponding document IDs
-    if encrypted_doc_ids:
-        cipher_decrypt = AES.new(key, AES.MODE_ECB)  # ECB mode
-        decrypted_doc_ids = decrypt_document_ids(encrypted_doc_ids, cipher_decrypt)
-        print(f"Documents matching the query '{search_query}':")
-        for doc_id in decrypted_doc_ids:
-            print(f"Document {int(doc_id) + 1}: {documents[int(doc_id)]}")
-    else:
-        print(f"No documents found for the query '{search_query}'.")
-
-if __name__ == "__main__":
-    main()
