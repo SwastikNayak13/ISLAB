@@ -1,0 +1,123 @@
+1. DES ECB (Electronic Codebook) Mode
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+import os
+
+# Key and plaintext
+key = os.urandom(8)  # DES key (8 bytes)
+plaintext = b'This is a test.'
+
+# Pad plaintext
+padder = padding.PKCS7(algorithms.DES.block_size).padder()
+padded_data = padder.update(plaintext) + padder.finalize()
+
+# Encrypt
+cipher = Cipher(algorithms.DES(key), modes.ECB(), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+
+print("DES ECB Ciphertext:", ciphertext)
+
+
+
+
+
+
+2. DES CBC (Cipher Block Chaining) Mode
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+import os
+
+# Key and plaintext
+key = os.urandom(8)  # DES key (8 bytes)
+iv = os.urandom(8)   # Initialization vector
+plaintext = b'This is a test.'
+
+# Pad plaintext
+padder = padding.PKCS7(algorithms.DES.block_size).padder()
+padded_data = padder.update(plaintext) + padder.finalize()
+
+# Encrypt
+cipher = Cipher(algorithms.DES(key), modes.CBC(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+
+print("DES CBC Ciphertext:", ciphertext)
+
+
+
+
+
+
+3. DES CFB (Cipher Feedback) Mode
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
+# Key and plaintext
+key = os.urandom(8)  # DES key (8 bytes)
+iv = os.urandom(8)   # Initialization vector
+plaintext = b'This is a test.'
+
+# Encrypt
+cipher = Cipher(algorithms.DES(key), modes.CFB(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(plaintext)
+
+print("DES CFB Ciphertext:", ciphertext)
+
+
+
+
+
+4. DES OFB (Output Feedback) Mode
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
+# Key and plaintext
+key = os.urandom(8)  # DES key (8 bytes)
+iv = os.urandom(8)   # Initialization vector
+plaintext = b'This is a test.'
+
+# Encrypt
+cipher = Cipher(algorithms.DES(key), modes.OFB(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(plaintext)
+
+print("DES OFB Ciphertext:", ciphertext)
+
+
+
+
+
+5. DES CTR (Counter) Mode
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
+# Key and plaintext
+key = os.urandom(8)  # DES key (8 bytes)
+nonce = os.urandom(8)  # Nonce
+counter = os.urandom(8)  # Counter
+plaintext = b'This is a test.'
+
+# Encrypt
+cipher = Cipher(algorithms.DES(key), modes.CTR(counter + nonce), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(plaintext)
+
+print("DES CTR Ciphertext:", ciphertext)
+
+
+Notes
+Key Size: DES uses a fixed key size of 8 bytes (64 bits). It’s important to note that only 56 bits of the key are effective due to parity bits.
+Security: DES is considered insecure for many applications due to its short key length. Consider using AES or other stronger algorithms in new applications.
+IV and Nonce: Ensure that IVs and nonces are unique and random for each encryption operation in modes that require them (CBC, CFB, OFB, CTR).
