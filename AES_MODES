@@ -1,0 +1,164 @@
+
+
+1. ECB (Electronic Codebook) Mode
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+import os
+
+# Key and plaintext
+key = os.urandom(16)  # AES key (16 bytes for AES-128)
+plaintext = b'This is a test.'
+
+# Pad plaintext
+padder = padding.PKCS7(algorithms.AES.block_size).padder()
+padded_data = padder.update(plaintext) + padder.finalize()
+
+# Encrypt
+cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+
+print("ECB Ciphertext:", ciphertext)
+
+
+
+
+
+
+
+2. CBC (Cipher Block Chaining) Mode
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+import os
+
+# Key and plaintext
+key = os.urandom(16)  # AES key (16 bytes for AES-128)
+iv = os.urandom(16)   # Initialization vector
+plaintext = b'This is a test.'
+
+# Pad plaintext
+padder = padding.PKCS7(algorithms.AES.block_size).padder()
+padded_data = padder.update(plaintext) + padder.finalize()
+
+# Encrypt
+cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+
+print("CBC Ciphertext:", ciphertext)
+
+
+
+
+
+
+3. CFB (Cipher Feedback) Mode
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
+# Key and plaintext
+key = os.urandom(16)  # AES key (16 bytes for AES-128)
+iv = os.urandom(16)   # Initialization vector
+plaintext = b'This is a test.'
+
+# Encrypt
+cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(plaintext)
+
+print("CFB Ciphertext:", ciphertext)
+
+
+
+
+
+
+
+4. GCM (Galois/Counter Mode) Mode
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
+# Key and plaintext
+key = os.urandom(16)  # AES key (16 bytes for AES-128)
+iv = os.urandom(12)   # Recommended IV size for GCM
+plaintext = b'This is a test.'
+
+# Encrypt
+cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+tag = encryptor.tag
+
+print("GCM Ciphertext:", ciphertext)
+print("GCM Tag:", tag)
+
+
+
+
+
+
+
+5. OFB (Output Feedback) Mode
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
+# Key and plaintext
+key = os.urandom(16)  # AES key (16 bytes for AES-128)
+iv = os.urandom(16)   # Initialization vector
+plaintext = b'This is a test.'
+
+# Encrypt
+cipher = Cipher(algorithms.AES(key), modes.OFB(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(plaintext)
+
+print("OFB Ciphertext:", ciphertext)
+
+
+
+
+
+
+6. CTR (Counter) Mode
+python
+Copy code
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
+# Key and plaintext
+key = os.urandom(16)  # AES key (16 bytes for AES-128)
+nonce = os.urandom(8) # Nonce (or counter, must be unique)
+counter = os.urandom(8)  # 8 bytes for the counter
+plaintext = b'This is a test.'
+
+# Create counter block
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers import Cipher
+
+cipher = Cipher(algorithms.AES(key), modes.CTR(counter + nonce), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(plaintext)
+
+print("CTR Ciphertext:", ciphertext)
+
+
+
+
+
+Summary of Modes
+OFB: Similar to CFB but generates a key stream from the encryption of the IV. It's less common but useful when you need to encrypt data without padding.
+CTR: Converts a block cipher into a stream cipher. It allows for random access to encrypted data and can encrypt data in parallel.
+Important Notes
+IV and Nonce: Ensure that both IVs and nonces are unique for each encryption to maintain security.
+Key Management: Always securely manage keys. Use a key management system in production.
+If you have any specific requirements or need further examples, let me know!
+ECB Mode is not recommended for encrypting sensitive data due to its vulnerability to pattern analysis.
+IV (Initialization Vector) must be unique and random for each encryption in CBC, CFB, and GCM modes.
+Padding is only needed for block modes like ECB and CBC. GCM handles lengths automatically.
+Feel free to adjust the plaintext and key sizes as needed!
