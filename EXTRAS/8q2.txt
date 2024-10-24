@@ -1,0 +1,178 @@
+Let's dive into some of the tricky questions and provide corresponding code modifications or solutions for each one. I'll cover several of these, focusing on the key modifications necessary.
+
+---
+
+### 1. *Encrypting the Entire Word Instead of Characters*
+Instead of encrypting each character, we can encrypt the entire word by converting it to a number (using something like hash values or a word-to-integer mapping).
+
+python
+from phe import paillier
+import hashlib
+
+# Generate Paillier keypair
+public_key, private_key = paillier.generate_paillier_keypair()
+
+# Function to hash a word (convert to integer) and encrypt it
+def encrypt_word(word, public_key):
+    word_hash = int(hashlib.sha256(word.encode()).hexdigest(), 16)  # Hash the word to an integer
+    encrypted_word = public_key.encrypt(word_hash)  # Encrypt the hashed word
+    return encrypted_word
+
+# Decryption function for the word
+def decrypt_word(encrypted_word, private_key):
+    decrypted_hash = private_key.decrypt(encrypted_word)  # Decrypt the word
+    return decrypted_hash  # Return decrypted hash (further mapping could be done)
+
+# Usage example
+word = "quick"
+encrypted_word = encrypt_word(word, public_key)
+print("Encrypted:", encrypted_word)
+decrypted_word = decrypt_word(encrypted_word, private_key)
+print("Decrypted (hash):", decrypted_word)  # This returns the hash, you would need to map it back to the word
+
+
+---
+
+### 2. *Handling Multi-Word Phrases*
+For multi-word queries, we need to handle searching for a sequence of words rather than individual words.
+
+python
+def search_encrypted_phrase(encrypted_query, encrypted_index, private_key):
+    matching_doc_ids = []
+
+    for enc_word in encrypted_query:
+        decrypted_query_word = decrypt_word(enc_word, private_key)  # Decrypt the encrypted query word
+
+        for encrypted_word, doc_ids in encrypted_index.items():
+            if decrypt_word(encrypted_word, private_key) == decrypted_query_word:  # If words match
+                if matching_doc_ids:  # If previous words matched, only keep common doc_ids
+                    matching_doc_ids = set(matching_doc_ids).intersection(doc_ids)
+                else:
+                    matching_doc_ids = doc_ids  # Initialize matching doc_ids
+
+    return list(matching_doc_ids)
+
+# Example of searching for a phrase "quick brown"
+search_term = "quick brown"
+encrypted_query = encrypt_query(search_term, public_key)
+matching_doc_ids = search_encrypted_phrase(encrypted_query, encrypted_index, private_key)
+
+
+In this solution, we decrypt and search for each word in sequence and then find common document IDs across the words to ensure they appear together.
+
+---
+
+### 3. *Handling Case Sensitivity*
+To maintain case sensitivity, we can simply skip converting the text to lowercase during tokenization.
+
+python
+def create_inverted_index_case_sensitive(docs):
+    inverted_index = defaultdict(list)  # Initialize the inverted index as a defaultdict
+    for doc_id, text in docs.items():  # Iterate over the documents
+        words = set(re.findall(r'\w+', text))  # Tokenize without converting to lowercase
+        for word in words:  # For each unique word in the document
+            inverted_index[word].append(doc_id)  # Map the word to its document ID
+    return inverted_index  # Return the constructed inverted index
+
+# Example usage:
+inverted_index_case_sensitive = create_inverted_index_case_sensitive(documents)
+
+
+Now, the words will be indexed in their original case, allowing case-sensitive searches.
+
+---
+
+### 4. *Implementing Proximity Search*
+We can modify the index to store not only the document IDs but also the positions of words within documents. Then, the search function can check if the words are near each other.
+
+python
+# Create an inverted index that also stores word positions
+def create_inverted_index_with_positions(docs):
+    inverted_index = defaultdict(list)  # Initialize inverted index
+    for doc_id, text in docs.items():
+        words = re.findall(r'\w+', text.lower())  # Tokenize the document
+        for idx, word in enumerate(words):
+            inverted_index[word].append((doc_id, idx))  # Map word to document ID and position
+    return inverted_index
+
+# Function to check if words are close to each other
+def proximity_search(encrypted_query, encrypted_index, private_key, max_distance=3):
+    query_word_positions = defaultdict(list)
+
+    for enc_word in encrypted_query:
+        decrypted_query_word = decrypt_word(enc_word, private_key)  # Decrypt query word
+
+        for encrypted_word, doc_positions in encrypted_index.items():
+            if decrypt_word(encrypted_word, private_key) == decrypted_query_word:  # If word matches
+                for doc_id, position in doc_positions:
+                    query_word_positions[doc_id].append(position)  # Store positions in matching documents
+
+    # Check proximity of the words in documents
+    matching_doc_ids = []
+    for doc_id, positions in query_word_positions.items():
+        if max([positions[i+1] - positions[i] for i in range(len(positions)-1)]) <= max_distance:
+            matching_doc_ids.append(doc_id)
+
+    return matching_doc_ids
+
+# Example usage
+inverted_index_positions = create_inverted_index_with_positions(documents)
+matching_doc_ids = proximity_search(encrypt_query("quick jump", public_key), inverted_index_positions, private_key)
+
+
+This implementation checks that the distance between the positions of words in the document does not exceed a given threshold (max_distance).
+
+---
+
+### 5. *Deterministic Encryption for Consistency*
+Deterministic encryption ensures that the same word is encrypted in the same way every time. One way to achieve this is by adding a hash-based consistency layer.
+
+python
+# Function to deterministically encrypt the word by hashing before encryption
+def encrypt_word_deterministic(word, public_key):
+    word_hash = int(hashlib.sha256(word.encode()).hexdigest(), 16)  # Hash word deterministically
+    encrypted_word = public_key.encrypt(word_hash)  # Encrypt the hash
+    return encrypted_word
+
+# Usage:
+word = "fox"
+encrypted_word1 = encrypt_word_deterministic(word, public_key)
+encrypted_word2 = encrypt_word_deterministic(word, public_key)
+print(encrypted_word1 == encrypted_word2)  # Should return True since encryption is deterministic
+
+
+By hashing the word deterministically before encryption, the same word will always produce the same ciphertext.
+
+---
+
+### 6. *Handling Words Not in the Corpus*
+We can add a check before attempting to decrypt the query words to handle cases where the query word isn't found in the index.
+
+python
+def search_encrypted_index_with_check(encrypted_query, encrypted_index, private_key):
+    matching_doc_ids = set()
+
+    for enc_word in encrypted_query:
+        decrypted_query_word = decrypt_word(enc_word, private_key)
+
+        word_found = False
+        for encrypted_word, doc_ids in encrypted_index.items():
+            if decrypt_word(encrypted_word, private_key) == decrypted_query_word:
+                matching_doc_ids.update(doc_ids)
+                word_found = True
+
+        if not word_found:
+            print(f"Word '{decrypted_query_word}' not found in corpus.")
+            return []  # Return empty list if any word is not found
+
+    return list(matching_doc_ids)
+
+# Example usage
+matching_doc_ids = search_encrypted_index_with_check(encrypted_query, encrypted_index, private_key)
+
+
+This method prints a message if any word in the search query isn't found in the corpus.
+
+---
+
+These code snippets cover a variety of scenarios that address potential tricky questions. They demonstrate how we can modify the current system to handle phrase searching, deterministic encryption, proximity search, case sensitivity, and performance optimization. Each example tackles a specific aspect of the Paillier encryption-based search process and enhances the flexibility of the system.

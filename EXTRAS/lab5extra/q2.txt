@@ -1,0 +1,147 @@
+Here's a complete example of using socket programming in Python to demonstrate the application of hash functions for ensuring data integrity during transmission. We'll implement a simple server and client where the server computes the hash of the received data and sends it back to the client for verification.
+
+Server Code
+The server receives data from the client, computes its hash, and sends the hash back.
+
+python
+Copy code
+import socket
+import hashlib
+
+def compute_hash(data):
+    return hashlib.sha256(data).hexdigest()
+
+def start_server(host='127.0.0.1', port=65432):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        server_socket.bind((host, port))
+        server_socket.listen()
+        print("Server listening on", (host, port))
+
+        conn, addr = server_socket.accept()
+        with conn:
+            print('Connected by', addr)
+            data = conn.recv(1024)
+            print("Received data:", data)
+
+            # Compute the hash of the received data
+            hash_value = compute_hash(data)
+            print("Computed hash:", hash_value)
+
+            # Send the hash back to the client
+            conn.sendall(hash_value.encode())
+
+if __name__ == "__main__":
+    start_server()
+Client Code
+The client sends data to the server and verifies the integrity by comparing the received hash with its locally computed hash.
+
+python
+Copy code
+import socket
+import hashlib
+
+def compute_hash(data):
+    return hashlib.sha256(data).hexdigest()
+
+def start_client(host='127.0.0.1', port=65432, message=b"Hello, World!"):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect((host, port))
+
+        # Send data to the server
+        print("Sending data:", message)
+        client_socket.sendall(message)
+
+        # Receive the hash from the server
+        received_hash = client_socket.recv(64).decode()
+        print("Received hash:", received_hash)
+
+        # Compute the hash locally
+        local_hash = compute_hash(message)
+        print("Local hash:", local_hash)
+
+        # Verify the integrity of the data
+        if local_hash == received_hash:
+            print("Data integrity verified. No corruption or tampering detected.")
+        else:
+            print("Data integrity compromised! Hash mismatch detected.")
+
+if __name__ == "__main__":
+    start_client()
+How the Example Works
+Server:
+
+Listens for incoming connections.
+Receives data from the client.
+Computes the SHA-256 hash of the received data.
+Sends the computed hash back to the client.
+Client:
+
+Connects to the server.
+Sends a message to the server.
+Receives the hash from the server.
+Computes its own hash of the sent message.
+Compares the received hash with its locally computed hash to verify data integrity.
+Example Usage
+Run the server script first.
+Then run the client script. You should see messages indicating whether the data integrity is verified or compromised.
+
+
+
+
+Possible Variations of the Question
+Question: "Modify the client to send a larger message and demonstrate how the hash verification still works."
+
+python
+Copy code
+# Change the message in start_client
+start_client(message=b"Hello, World! " * 100)  # Larger message
+
+
+
+
+Question: "Add functionality to the server to simulate data corruption before sending the hash back to the client."
+
+python
+Copy code
+# Introduce corruption in the server before sending the hash
+data = data + b"corruption"  # Simulate data tampering
+
+
+
+
+Question: "Implement a more complex protocol where the client sends multiple messages and verifies each one."
+
+python
+Copy code
+# Extend the client to send multiple messages
+messages = [b"First message", b"Second message", b"Third message"]
+for msg in messages:
+    # Send each message and verify
+
+
+
+
+Question: "Enhance the server to log each received message and its computed hash for audit purposes."
+
+python
+Copy code
+# Add logging in the server
+with open("log.txt", "a") as log_file:
+    log_file.write(f"Received: {data}, Hash: {hash_value}\n")
+
+
+
+
+Question: "Change the hash function used in the server and client to MD5 instead of SHA-256 and discuss the implications."
+
+python
+Copy code
+# Use hashlib.md5() instead of hashlib.sha256() in both server and client
+Conclusion
+This example illustrates how to use socket programming in Python to ensure data integrity during transmission using hash functions. The variations show how you can extend the functionality and complexity of the communication between client and server while maintaining the integrity checks.
+
+
+
+
+
+

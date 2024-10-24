@@ -1,0 +1,135 @@
+
+Here's a complete implementation of a client-server setup where the client sends a message in multiple parts, and the server reassembles the message, computes its hash, and sends the hash back to the client for verification.
+
+Server Code
+The server receives parts of the message from the client, reassembles them, computes the hash, and sends the hash back.
+
+python
+Copy code
+import socket
+import hashlib
+
+def compute_hash(data):
+    return hashlib.sha256(data).hexdigest()
+
+def start_server(host='127.0.0.1', port=65432):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        server_socket.bind((host, port))
+        server_socket.listen()
+        print("Server listening on", (host, port))
+
+        conn, addr = server_socket.accept()
+        with conn:
+            print('Connected by', addr)
+            full_message = b''
+
+            while True:
+                part = conn.recv(1024)
+                if not part:
+                    break
+                full_message += part
+
+            print("Reassembled message:", full_message.decode())
+
+            # Compute the hash of the reassembled message
+            hash_value = compute_hash(full_message)
+            print("Computed hash:", hash_value)
+
+            # Send the hash back to the client
+            conn.sendall(hash_value.encode())
+
+if __name__ == "__main__":
+    start_server()
+Client Code
+The client splits the message into parts, sends each part to the server, and verifies the integrity of the message using the received hash.
+
+python
+Copy code
+import socket
+import hashlib
+
+def compute_hash(data):
+    return hashlib.sha256(data).hexdigest()
+
+def start_client(host='127.0.0.1', port=65432, message="Hello, this is a message that will be sent in parts."):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect((host, port))
+
+        # Split the message into parts
+        parts = [message[i:i+20].encode() for i in range(0, len(message), 20)]  # Sending in chunks of 20 characters
+
+        for part in parts:
+            print(f"Sending part: {part.decode()}")
+            client_socket.sendall(part)
+
+        # Send a final empty message to indicate completion
+        client_socket.sendall(b'')
+
+        # Receive the hash from the server
+        received_hash = client_socket.recv(64).decode()
+        print("Received hash:", received_hash)
+
+        # Compute the hash locally
+        local_hash = compute_hash(message.encode())
+        print("Local hash:", local_hash)
+
+        # Verify the integrity of the message
+        if local_hash == received_hash:
+            print("Data integrity verified. No corruption or tampering detected.")
+        else:
+            print("Data integrity compromised! Hash mismatch detected.")
+
+if __name__ == "__main__":
+    start_client()
+How It Works
+Server:
+
+Listens for incoming connections.
+Receives message parts from the client until it detects an empty message, which signifies the end of the transmission.
+Reassembles the message, computes its hash, and sends the hash back to the client.
+Client:
+
+Connects to the server.
+Splits a predefined message into smaller parts and sends each part to the server.
+Sends an empty message to signal the end of transmission.
+Receives the hash from the server, computes its own hash of the original message, and verifies the integrity.
+Example Usage
+Run the server script first.
+Then run the client script. You should see messages indicating whether the data integrity is verified or compromised.
+Possible Variations of the Question
+Question: "Modify the client to send a longer message in fewer parts (e.g., 50 characters per part)."
+
+python
+Copy code
+parts = [message[i:i+50].encode() for i in range(0, len(message), 50)]  # Change chunk size to 50
+Question: "Enhance the server to log the received parts and the final reassembled message."
+
+python
+Copy code
+with open("server_log.txt", "a") as log_file:
+    log_file.write(f"Received part: {part.decode()}\n")
+
+
+
+Question: "Implement a feature to handle potential data corruption by introducing a checksum along with the hash."
+
+python
+Copy code
+# Modify the server to compute a checksum and send it back along with the hash
+Question: "Change the hashing algorithm to SHA-1 and observe the effects on performance."
+
+python
+Copy code
+# Replace hashlib.sha256() with hashlib.sha1() in both server and client
+
+
+
+Question: "Add exception handling to the server to manage potential errors during data transmission."
+
+
+try:
+    # Socket operations
+except Exception as e:
+    print(f"An error occurred: {e}")
+Conclusion
+This example illustrates a robust client-server model for sending messages in parts while ensuring data integrity using hashing. The variations provide ideas for extending the functionality and adapting the experiment for different scenarios.

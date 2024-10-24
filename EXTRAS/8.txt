@@ -1,0 +1,257 @@
+Sure! Let's go through each of the tricky questions and provide individual code snippets to solve them.
+
+### 1. *Handling Multi-word Queries*
+
+To handle multi-word queries, we need to encrypt and search for each word in the query individually.
+
+python
+# Modified to handle multi-word queries
+
+def encrypt_query_ecb(query, key):
+    # Split query into words and encrypt each word individually
+    encrypted_query = [encrypt_word_ecb(word, key) for word in query.split()]
+    return encrypted_query
+
+def search_encrypted_index_multi(encrypted_query, encrypted_inverted_index):
+    matched_doc_ids = set()
+    for enc_word in encrypted_query:
+        word_doc_ids = []
+        for encrypted_word, doc_ids in encrypted_inverted_index.items():
+            if encrypted_word == enc_word:
+                word_doc_ids.extend(doc_ids)
+        # Add document IDs to set for each word
+        matched_doc_ids.update(word_doc_ids)
+    return list(matched_doc_ids)
+
+# In the main function, replace single-word search with:
+encrypted_query = encrypt_query_ecb(search_query, key)  # Encrypt each word in the query
+matched_doc_ids = search_encrypted_index_multi(encrypted_query, encrypted_inverted_index)
+
+
+### 2. *Partial Word Matching (Prefix Search)*
+
+Prefix search requires plaintext matching for prefixes, followed by encryption.
+
+python
+# Modified to support prefix search
+
+def search_by_prefix(prefix, inverted_index):
+    # Find all words in the inverted index that start with the given prefix
+    matched_words = [word for word in inverted_index if word.startswith(prefix)]
+    return matched_words
+
+# Use plaintext search to find matching words, then encrypt and search:
+prefix = 'enc'  # Example prefix
+matched_words = search_by_prefix(prefix, inverted_index)
+encrypted_query = [encrypt_word_ecb(word, key) for word in matched_words]  # Encrypt matching words
+
+# Proceed with searching in the encrypted index for these encrypted queries
+
+
+### 3. *Stemming and Lemmatization*
+
+We can use libraries like nltk to stem words before indexing.
+
+python
+import nltk
+from nltk.stem import PorterStemmer
+
+nltk.download('punkt')
+
+ps = PorterStemmer()
+
+# Modified to apply stemming to documents and queries
+
+def build_inverted_index_stemmed(docs):
+    inverted_index = defaultdict(list)
+    for doc_id, doc in enumerate(docs):
+        words = nltk.word_tokenize(doc.lower())
+        stemmed_words = [ps.stem(word) for word in words]
+        for word in set(stemmed_words):
+            inverted_index[word].append(doc_id)
+    return inverted_index
+
+# Stem search query before encryption
+def encrypt_query_ecb_stemmed(query, key):
+    stemmed_query = [ps.stem(word) for word in query.split()]
+    encrypted_query = [encrypt_word_ecb(word, key) for word in stemmed_query]
+    return encrypted_query
+
+# Update main function to use stemming
+inverted_index = build_inverted_index_stemmed(documents)
+encrypted_query = encrypt_query_ecb_stemmed(search_query, key)
+
+
+### 4. *Handling Case Sensitivity*
+
+This is already handled by converting everything to lowercase, but to make it explicit:
+
+python
+# Ensure case-insensitivity by explicitly converting to lowercase in all places
+def encrypt_query_case_insensitive(query, key):
+    return encrypt_query_ecb(query.lower(), key)  # Convert query to lowercase before encryption
+
+
+### 5. *Adding Wildcard Support*
+
+For wildcard support, we need to process wildcards (like *) before encryption.
+
+python
+import fnmatch
+
+# Modified to support wildcard search (using plaintext search first)
+
+def search_by_wildcard(wildcard, inverted_index):
+    # Use fnmatch to handle wildcard pattern matching
+    matched_words = [word for word in inverted_index if fnmatch.fnmatch(word, wildcard)]
+    return matched_words
+
+# Example wildcard search
+wildcard_query = 'enc*tion'  # Example query
+matched_words = search_by_wildcard(wildcard_query, inverted_index)
+
+# Encrypt the matched words
+encrypted_query = [encrypt_word_ecb(word, key) for word in matched_words]
+
+
+### 6. *Improving Performance for Large Datasets*
+
+Using a Trie structure can optimize the search for large datasets. Here’s an outline to use a Trie for efficient search:
+
+python
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.doc_ids = []
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, word, doc_id):
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+        node.doc_ids.append(doc_id)
+
+    def search(self, word):
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                return []
+            node = node.children[char]
+        return node.doc_ids
+
+# Build and search the Trie
+trie = Trie()
+for doc_id, doc in enumerate(documents):
+    for word in set(doc.lower().split()):
+        trie.insert(word, doc_id)
+
+# Example search using Trie
+search_word = "encryption"
+matched_doc_ids = trie.search(search_word)
+
+
+### 7. *Handling Synonyms*
+
+We can use a library like WordNet to expand queries with synonyms.
+
+python
+from nltk.corpus import wordnet
+
+# Modified to handle synonyms
+
+def get_synonyms(word):
+    synonyms = set()
+    for syn in wordnet.synsets(word):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name())
+    return list(synonyms)
+
+# Expand the query to include synonyms
+query = 'confidentiality'
+synonyms = get_synonyms(query)
+
+# Encrypt and search for all synonyms
+encrypted_synonyms = [encrypt_word_ecb(word, key) for word in synonyms]
+
+
+### 8. *Search Over Multiple Keys*
+
+To handle multiple keys, maintain a mapping between document IDs and keys.
+
+python
+# Mapping of document IDs to AES keys (for simplicity, assuming keys are pre-generated)
+doc_keys = {0: key1, 1: key2, 2: key3, ...}
+
+def search_with_multiple_keys(query, doc_keys, encrypted_index):
+    matched_doc_ids = []
+    for doc_id, doc_key in doc_keys.items():
+        encrypted_query = encrypt_query_ecb(query, doc_key)  # Encrypt query with each key
+        if encrypted_query in encrypted_index:
+            matched_doc_ids.append(doc_id)
+    return matched_doc_ids
+
+
+### 9. *Supporting Ranking of Search Results*
+
+We can modify the inverted index to store term frequencies, and then rank results using a simple scoring system.
+
+python
+# Modified inverted index to store term frequencies
+def build_inverted_index_with_tf(docs):
+    inverted_index = defaultdict(lambda: defaultdict(int))  # Term -> Doc ID -> Term Frequency
+    for doc_id, doc in enumerate(docs):
+        words = doc.lower().split()
+        for word in words:
+            inverted_index[word][doc_id] += 1
+    return inverted_index
+
+# Simple scoring function (sum of term frequencies)
+def rank_results(encrypted_query, encrypted_inverted_index):
+    doc_scores = defaultdict(int)
+    for enc_word in encrypted_query:
+        if enc_word in encrypted_inverted_index:
+            for doc_id, freq in encrypted_inverted_index[enc_word].items():
+                doc_scores[doc_id] += freq  # Higher frequency = higher score
+    return sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)  # Sort by score
+
+# Encrypt query and rank results
+encrypted_query = encrypt_query_ecb(search_query, key)
+ranked_results = rank_results(encrypted_query, encrypted_inverted_index)
+
+
+### 10. *Dealing with Homophones or Similar-Sounding Words*
+
+We can use Soundex or similar phonetic algorithms to match homophones.
+
+python
+from soundex import getInstance
+
+soundex = getInstance()
+
+# Modified to handle phonetic matches using Soundex
+
+def build_inverted_index_with_soundex(docs):
+    inverted_index = defaultdict(list)
+    for doc_id, doc in enumerate(docs):
+        words = doc.lower().split()
+        for word in set(words):
+            phonetic_key = soundex.soundex(word)  # Get the phonetic code
+            inverted_index[phonetic_key].append(doc_id)
+    return inverted_index
+
+# Phonetic search query
+search_word = 'datum'  # Example query
+phonetic_key = soundex.soundex(search_word)
+
+# Search inverted index with phonetic key
+matched_doc_ids = inverted_index.get(phonetic_key, [])
+
+
+---
+
+Each code snippet addresses a specific challenge and provides a possible solution to handle it. Let me know if you need any further explanation on any of these!

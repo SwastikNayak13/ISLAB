@@ -1,0 +1,92 @@
+Access control in Python typically refers to managing access to class attributes and methods. This can be done using naming conventions and property decorators. Here’s a brief overview:
+
+
+
+
+1. Naming Conventions
+Python uses a naming convention to indicate the intended level of access:
+
+Public: Attributes and methods that are accessible from outside the class. They are defined without any leading underscores.
+class MyClass:
+    def __init__(self):
+        self.public_attribute = "I'm public"
+
+
+
+
+Protected: Attributes and methods that should be treated as non-public and are meant for internal use. They are prefixed with a single underscore (_).
+class MyClass:
+    def __init__(self):
+        self._protected_attribute = "I'm protected"
+
+
+
+
+
+Private: Attributes and methods that are not accessible from outside the class. They are prefixed with double underscores (__). This triggers name mangling.
+class MyClass:
+    def __init__(self):
+        self.__private_attribute = "I'm private"
+
+    def __private_method(self):
+        return "This is a private method"
+
+
+
+
+
+2. Accessing Attributes and Methods
+You can access these attributes and methods based on their visibility:
+
+
+obj = MyClass()
+
+# Accessing public attribute
+print(obj.public_attribute)
+
+# Accessing protected attribute (not recommended, but possible)
+print(obj._protected_attribute)
+
+# Accessing private attribute (will raise an error)
+# print(obj.__private_attribute)  # This will raise an AttributeError
+
+# Accessing private attribute using name mangling
+print(obj._MyClass__private_attribute)
+
+# Accessing a private method
+# obj.__private_method()  # This will raise an AttributeError
+# Accessing using name mangling
+print(obj._MyClass__private_method())
+
+
+
+
+
+
+3. Using Properties for Controlled Access
+You can use properties to control access to attributes. This allows you to define getter and setter methods:
+
+
+class MyClass:
+    def __init__(self):
+        self.__value = 0
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, new_value):
+        if new_value >= 0:
+            self.__value = new_value
+        else:
+            raise ValueError("Value must be non-negative")
+
+obj = MyClass()
+obj.value = 10  # Using setter
+print(obj.value)  # Using getter
+# obj.value = -5  # This will raise a ValueError
+Summary
+Use public, protected, and private naming conventions to manage access.
+Use properties to control how attributes are accessed and modified.
+Remember that Python relies on conventions rather than strict access control, so it's essential to communicate the intended use of class attributes and methods through naming.

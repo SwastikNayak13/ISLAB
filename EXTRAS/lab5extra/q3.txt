@@ -1,0 +1,170 @@
+
+To design an experiment analyzing the performance of MD5, SHA-1, and SHA-256 hashing techniques in Python, we'll perform the following steps:
+
+Generate a dataset of random strings.
+Compute hash values using each hashing technique.
+Measure the time taken for each hash computation.
+Implement collision detection to identify any collisions.
+Experiment Code
+Here's a complete implementation:
+
+
+import hashlib
+import time
+import random
+import string
+from collections import defaultdict
+
+def generate_random_strings(num_strings, length):
+    """Generate a list of random strings of fixed length."""
+    return [''.join(random.choices(string.ascii_letters + string.digits, k=length)) for _ in range(num_strings)]
+
+def compute_hashes(strings):
+    """Compute MD5, SHA-1, and SHA-256 hashes for a list of strings."""
+    hash_results = {'MD5': [], 'SHA-1': [], 'SHA-256': []}
+    times = {'MD5': 0, 'SHA-1': 0, 'SHA-256': 0}
+
+    for s in strings:
+        start_time = time.time()
+        md5_hash = hashlib.md5(s.encode()).hexdigest()
+        times['MD5'] += time.time() - start_time
+        hash_results['MD5'].append(md5_hash)
+
+        start_time = time.time()
+        sha1_hash = hashlib.sha1(s.encode()).hexdigest()
+        times['SHA-1'] += time.time() - start_time
+        hash_results['SHA-1'].append(sha1_hash)
+
+        start_time = time.time()
+        sha256_hash = hashlib.sha256(s.encode()).hexdigest()
+        times['SHA-256'] += time.time() - start_time
+        hash_results['SHA-256'].append(sha256_hash)
+
+    return hash_results, times
+
+def detect_collisions(hash_results):
+    """Detect collisions in the hash results."""
+    collision_info = {}
+    for algo, hashes in hash_results.items():
+        hash_count = defaultdict(list)
+        for idx, h in enumerate(hashes):
+            hash_count[h].append(idx)
+
+        collisions = {h: indices for h, indices in hash_count.items() if len(indices) > 1}
+        collision_info[algo] = collisions
+    return collision_info
+
+def main():
+    # Parameters
+    num_strings = 100  # Number of random strings
+    length = 10  # Length of each string
+
+    # Generate random strings
+    random_strings = generate_random_strings(num_strings, length)
+
+    # Compute hashes and measure time
+    hash_results, times = compute_hashes(random_strings)
+
+    # Detect collisions
+    collision_info = detect_collisions(hash_results)
+
+    # Output results
+    print("Hash Computation Times (seconds):")
+    for algo, total_time in times.items():
+        print(f"{algo}: {total_time:.6f}")
+
+    print("\nCollision Information:")
+    for algo, collisions in collision_info.items():
+        if collisions:
+            print(f"{algo} collisions:")
+            for h, indices in collisions.items():
+                print(f"  Hash: {h}, Indices: {indices}")
+        else:
+            print(f"{algo} has no collisions.")
+
+if __name__ == "__main__":
+    main()
+Explanation of the Code
+Random String Generation: The generate_random_strings function generates a specified number of random strings, each of a specified length.
+
+Hash Computation: The compute_hashes function computes MD5, SHA-1, and SHA-256 hashes for each string, measuring the time taken for each hash computation.
+
+Collision Detection: The detect_collisions function checks for collisions by counting occurrences of each hash and reporting any duplicates.
+
+Main Function: The main function coordinates the execution, generates random strings, computes hashes, detects collisions, and prints the results.
+
+Example Output
+When you run the above script, you might see output similar to:
+
+Hash Computation Times (seconds):
+MD5: 0.001234
+SHA-1: 0.001567
+SHA-256: 0.002345
+
+Collision Information:
+MD5 has no collisions.
+SHA-1 has no collisions.
+SHA-256 has no collisions.
+
+
+
+
+Possible Variations of the Question
+Question: "Modify the experiment to analyze the performance with larger strings (e.g., 50 characters long)."
+
+length = 50  # Change string length to 50
+
+
+
+
+Question: "Implement a way to visualize the hash computation times using a plotting library like Matplotlib."
+
+
+import matplotlib.pyplot as plt
+
+# After computing times, you can add:
+plt.bar(times.keys(), times.values())
+plt.ylabel('Time (seconds)')
+plt.title('Hash Computation Times')
+plt.show()
+
+
+
+
+Question: "Add an option to save the generated dataset and hash values to a CSV file."
+
+
+import pandas as pd
+
+# At the end of main, after collision detection:
+df = pd.DataFrame(hash_results)
+df.to_csv('hash_results.csv', index=False)
+
+
+
+
+Question: "Enhance the experiment to allow for user-defined numbers of strings and string lengths via command-line arguments."
+
+import argparse
+
+# At the beginning of main, add argument parsing
+parser = argparse.ArgumentParser()
+parser.add_argument('--num_strings', type=int, default=100)
+parser.add_argument('--length', type=int, default=10)
+args = parser.parse_args()
+
+# Use args.num_strings and args.length in the script
+
+
+
+Question: "Analyze the memory usage during the hashing process and report it along with the computation time."
+
+import tracemalloc
+
+tracemalloc.start()
+# Run the hashing functions
+current, peak = tracemalloc.get_traced_memory()
+print(f"Current memory usage: {current / 10**6}MB; Peak was {peak / 10**6}MB")
+tracemalloc.stop()
+Conclusion
+This experiment provides a comprehensive approach to analyzing hash functions in Python, covering time performance and collision detection. The variations give insights into how to extend the experiment and adapt it to different contexts or requirements.

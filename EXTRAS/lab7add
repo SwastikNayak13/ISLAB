@@ -1,0 +1,203 @@
+Let's break down the four parts of the exercise and provide code implementations for each, exploring different functionalities within PHE (Partially Homomorphic Encryption) schemes, such as Paillier and ElGamal. These exercises include homomorphic multiplication, secure data sharing, secure thresholding, and performance analysis.
+
+---
+
+### 1a. *Homomorphic Multiplication (ElGamal Cryptosystem)*
+
+ElGamal supports *homomorphic multiplication* (i.e., multiplying two encrypted values results in the encryption of their product). Here’s an implementation of ElGamal encryption and homomorphic multiplication.
+
+#### Code for ElGamal Encryption and Homomorphic Multiplication
+
+python
+from Crypto.PublicKey import ElGamal
+from Crypto.Random import random
+from Crypto.Util import number
+
+# 1a. ElGamal key generation
+def generate_elgamal_keypair(bits=256):
+    key = ElGamal.generate(bits, random.StrongRandom().read)
+    return key, key.publickey()
+
+# Encrypt a message using ElGamal
+def elgamal_encrypt(message, public_key):
+    # ElGamal encryption (returns a tuple)
+    k = random.StrongRandom().randint(1, public_key.p - 2)
+    cipher = public_key.encrypt(message, k)
+    return cipher
+
+# Decrypt the ciphertext using ElGamal private key
+def elgamal_decrypt(ciphertext, private_key):
+    plaintext = private_key.decrypt(ciphertext)
+    return plaintext
+
+# Homomorphic multiplication: Ciphertext of a*b is Ciphertext_a * Ciphertext_b
+def homomorphic_multiply(cipher_a, cipher_b, public_key):
+    return (cipher_a[0] * cipher_b[0] % public_key.p, cipher_a[1] * cipher_b[1] % public_key.p)
+
+# Example usage
+private_key, public_key = generate_elgamal_keypair()
+
+# Encrypt two numbers
+message1 = 15
+message2 = 3
+cipher1 = elgamal_encrypt(message1, public_key)
+cipher2 = elgamal_encrypt(message2, public_key)
+
+# Perform homomorphic multiplication on encrypted values
+cipher_product = homomorphic_multiply(cipher1, cipher2, public_key)
+
+# Decrypt the result
+decrypted_product = elgamal_decrypt(cipher_product, private_key)
+
+print(f"Original product: {message1 * message2}")
+print(f"Decrypted product: {decrypted_product}")
+
+
+This code demonstrates the basic ElGamal cryptosystem and its homomorphic multiplication property. You can multiply two encrypted values and obtain the encrypted result of the product without decrypting the individual values.
+
+---
+
+### 1b. *Secure Data Sharing (Paillier Cryptosystem)*
+
+In this scenario, two parties can encrypt their data using the *Paillier cryptosystem, share it, and perform computations on the combined data without decrypting it. Paillier supports **homomorphic addition*.
+
+#### Code for Secure Data Sharing Using Paillier
+
+python
+from phe import paillier
+
+# Generate Paillier keypair for both parties
+public_key, private_key = paillier.generate_paillier_keypair()
+
+# Party 1's data
+data_party1 = 10
+encrypted_data_party1 = public_key.encrypt(data_party1)
+
+# Party 2's data
+data_party2 = 20
+encrypted_data_party2 = public_key.encrypt(data_party2)
+
+# Perform addition of encrypted data without decryption
+combined_encrypted_data = encrypted_data_party1 + encrypted_data_party2
+
+# Decrypt the result
+combined_result = private_key.decrypt(combined_encrypted_data)
+
+print(f"Party 1's data: {data_party1}")
+print(f"Party 2's data: {data_party2}")
+print(f"Combined data (decrypted result): {combined_result}")
+
+
+In this example, the two parties (Party 1 and Party 2) each encrypt their data, combine it via homomorphic addition, and then the combined result is decrypted. Neither party learns about the other's data in the process.
+
+---
+
+### 1c. *Secure Thresholding (PHE for Multi-Party Computation)*
+
+In secure multi-party computation, multiple parties encrypt their data and collaborate to compute a result without revealing individual inputs. Here, we’ll simulate a *thresholding function* (e.g., sum of values must exceed a threshold).
+
+#### Code for Secure Thresholding
+
+python
+from phe import paillier
+
+# Generate Paillier keypair for multiple parties
+public_key, private_key = paillier.generate_paillier_keypair()
+
+# Each party encrypts their data
+party1_data = 40
+party2_data = 30
+party3_data = 20
+
+encrypted_party1 = public_key.encrypt(party1_data)
+encrypted_party2 = public_key.encrypt(party2_data)
+encrypted_party3 = public_key.encrypt(party3_data)
+
+# Homomorphic addition of all parties' encrypted data
+sum_encrypted = encrypted_party1 + encrypted_party2 + encrypted_party3
+
+# Decrypt the result
+total_sum = private_key.decrypt(sum_encrypted)
+
+# Define a threshold (e.g., threshold = 75)
+threshold = 75
+
+# Check if the total sum exceeds the threshold
+if total_sum > threshold:
+    print(f"The total sum {total_sum} exceeds the threshold {threshold}.")
+else:
+    print(f"The total sum {total_sum} does not exceed the threshold {threshold}.")
+
+
+This example simulates multi-party encrypted data computation using Paillier, where a threshold function checks if the sum of encrypted values exceeds a given threshold without revealing individual data.
+
+---
+
+### 1d. *Performance Analysis (Benchmarking of Paillier and ElGamal)*
+
+We can benchmark the performance of different operations (like encryption, decryption, and homomorphic operations) between Paillier and ElGamal to compare their efficiency.
+
+#### Code for Performance Benchmarking
+
+python
+import time
+from phe import paillier
+from Crypto.PublicKey import ElGamal
+from Crypto.Random import random
+
+# Function to benchmark encryption and decryption
+def benchmark_encryption_decryption(scheme_name, encrypt_func, decrypt_func, data):
+    start_time = time.time()
+    encrypted_data = encrypt_func(data)
+    encryption_time = time.time() - start_time
+
+    start_time = time.time()
+    decrypted_data = decrypt_func(encrypted_data)
+    decryption_time = time.time() - start_time
+
+    print(f"{scheme_name}:")
+    print(f"  Encryption time: {encryption_time:.6f} seconds")
+    print(f"  Decryption time: {decryption_time:.6f} seconds")
+    print(f"  Correct decryption: {decrypted_data == data}\n")
+
+# Paillier Encryption/Decryption
+public_key_p, private_key_p = paillier.generate_paillier_keypair()
+benchmark_encryption_decryption(
+    "Paillier",
+    lambda x: public_key_p.encrypt(x),
+    lambda x: private_key_p.decrypt(x),
+    12345
+)
+
+# ElGamal Encryption/Decryption
+def elgamal_encrypt_decrypt_benchmark():
+    key_elgamal, public_key_elgamal = generate_elgamal_keypair()
+
+    def encrypt_func(message):
+        return elgamal_encrypt(message, public_key_elgamal)
+
+    def decrypt_func(ciphertext):
+        return elgamal_decrypt(ciphertext, key_elgamal)
+
+    benchmark_encryption_decryption(
+        "ElGamal",
+        encrypt_func,
+        decrypt_func,
+        12345
+    )
+
+elgamal_encrypt_decrypt_benchmark()
+
+
+This script benchmarks the encryption and decryption time for both the Paillier and ElGamal cryptosystems. You can compare the performance for different key sizes or for various operations like homomorphic addition (Paillier) or multiplication (ElGamal).
+
+---
+
+### Summary of the Implementations:
+
+- *1a:* Demonstrated homomorphic multiplication using the ElGamal cryptosystem.
+- *1b:* Implemented secure data sharing using Paillier for homomorphic addition.
+- *1c:* Simulated secure thresholding using Paillier in a multi-party computation.
+- *1d:* Provided benchmarking for performance comparison between Paillier and ElGamal.
+
+Each of these exercises highlights different aspects of homomorphic encryption and the kinds of problems these encryption schemes can solve in a privacy-preserving manner.

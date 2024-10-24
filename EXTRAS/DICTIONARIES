@@ -1,0 +1,154 @@
+Dictionaries in Python are a built-in data type that allows you to store and manage data in key-value pairs. They are mutable, meaning you can change their contents after creation, and they are unordered, meaning the items do not have a defined order.
+
+Key Features of Dictionaries
+Key-Value Pairs: Each entry in a dictionary consists of a key and a value. The key is unique, and it is used to access the corresponding value.
+
+Mutable: You can add, remove, and change items in a dictionary.
+
+Unordered: Dictionaries do not maintain any order. However, as of Python 3.7, the insertion order of keys is preserved.
+
+Dynamic: You can add and remove items as needed.
+
+Creating a Dictionary
+You can create a dictionary using curly braces {} or the dict() constructor.
+
+# Using curly braces
+my_dict = {
+    'name': 'Alice',
+    'age': 30,
+    'city': 'New York'
+}
+
+# Using dict() constructor
+my_dict = dict(name='Alice', age=30, city='New York')
+
+
+
+Accessing Values
+You can access values using their corresponding keys.
+
+print(my_dict['name'])  # Output: Alice
+print(my_dict['age'])   # Output: 30
+
+
+
+
+
+
+Adding and Updating Items
+You can add a new key-value pair or update an existing one.
+
+my_dict['email'] = 'alice@example.com'  # Adding a new key-value pair
+my_dict['age'] = 31                      # Updating an existing value
+
+
+
+
+
+
+Removing Items
+You can remove items using del, pop(), or popitem().
+
+del my_dict['city']          # Remove 'city' key
+age = my_dict.pop('age')     # Remove 'age' and return its value
+last_item = my_dict.popitem()  # Remove and return the last inserted key-value pair
+
+
+
+
+Iterating Through a Dictionary
+You can iterate through keys, values, or key-value pairs.
+
+# Iterating through keys
+for key in my_dict:
+    print(key)
+
+# Iterating through values
+for value in my_dict.values():
+    print(value)
+
+# Iterating through key-value pairs
+for key, value in my_dict.items():
+    print(f"{key}: {value}")
+
+
+
+
+
+Checking for Keys
+You can check if a key exists in the dictionary using the in keyword.
+
+if 'name' in my_dict:
+    print("Name exists in the dictionary.")
+
+
+
+Example of a Dictionary
+
+
+Here's a complete example of a dictionary in use:
+
+# Creating a dictionary
+person = {
+    'name': 'Bob',
+    'age': 25,
+    'city': 'Los Angeles'
+}
+
+# Accessing values
+print(person['name'])  # Output: Bob
+
+# Adding a new key-value pair
+person['job'] = 'Engineer'
+
+# Updating an existing value
+person['age'] = 26
+
+# Removing a key-value pair
+del person['city']
+
+# Iterating through the dictionary
+for key, value in person.items():
+    print(f"{key}: {value}")
+Summary
+Dictionaries are versatile and powerful data structures in Python that allow you to store and manage data in a way that makes it easy to access, modify, and iterate through key-value pairs. They are widely used for various tasks, such as data storage, configuration settings, and more.
+
+
+
+
+
+
+
+
+
+
+
+def build_inverted_index(documents):
+    inverted_index = {}
+
+    for doc_id, text in documents.items():
+        # Tokenize the text (you can use more advanced tokenization if needed)
+        tokens = text.lower().split()  # Convert to lowercase and split into words
+
+        for token in tokens:
+            if token not in inverted_index:
+                inverted_index[token] = []  # Initialize the postings list
+
+            if doc_id not in inverted_index[token]:
+                inverted_index[token].append(doc_id)  # Add document ID to the postings list
+
+    return inverted_index
+
+# Example documents
+documents = {
+    1: "The cat sat on the mat",
+    2: "The dog sat on the log",
+    3: "The cat and the dog are friends"
+}
+
+# Build the inverted index
+inverted_index = build_inverted_index(documents)
+
+# Display the inverted index
+for term, doc_ids in inverted_index.items():
+    print(f"{term}: {doc_ids}")
