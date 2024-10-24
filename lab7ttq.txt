@@ -1,0 +1,219 @@
+Here are some tricky and twisted questions for each code (Paillier and RSA) that might require modifications. These questions test understanding and the ability to extend functionality, modify parameters, or handle edge cases.
+
+---
+
+### **For Paillier Encryption (Addition Homomorphism)**:
+
+1. **Question**:  
+   *What would happen if you try to encrypt negative integers using Paillier encryption? Modify the code to handle encryption and decryption of negative integers.*
+   
+   **Hint**:  
+   Paillier encryption is designed for non-negative integers. To handle negative integers, you might map negative integers to a different range by adding a large constant (such as `n`) before encryption.
+
+   **Modification**:
+   Add logic to handle negative integers by mapping them into a non-negative range.
+
+   ```python
+   def encrypt(self, plaintext):
+       # Handling negative plaintexts by adding 'n' to the plaintext
+       if plaintext < 0:
+           plaintext = plaintext + self.n
+       r = random.randint(1, self.n - 1)
+       while math.gcd(r, self.n) != 1:
+           r = random.randint(1, self.n - 1)
+       return (pow(self.g, plaintext, self.n_sq) * pow(r, self.n, self.n_sq)) % self.n_sq
+
+   def decrypt(self, ciphertext):
+       result = (self.l_function(pow(ciphertext, self.lam, self.n_sq)) * self.mu) % self.n
+       # Handling negative decrypted results by subtracting 'n' if greater than n/2
+       if result > self.n // 2:
+           result = result - self.n
+       return result
+   ```
+
+2. **Question**:  
+   *What happens if the same random `r` is used for multiple encryption operations in Paillier? Modify the code to prevent this situation.*
+
+   **Hint**:  
+   Using the same `r` value for different encryption operations can compromise security. Ensure that `r` is never reused by generating a fresh `r` for every encryption.
+
+   **Modification**:
+   Modify the code to track used `r` values to ensure uniqueness.
+   
+   ```python
+   used_r_values = set()  # Track used r values
+   
+   def encrypt(self, plaintext):
+       r = random.randint(1, self.n - 1)
+       while math.gcd(r, self.n) != 1 or r in used_r_values:
+           r = random.randint(1, self.n - 1)
+       used_r_values.add(r)
+       return (pow(self.g, plaintext, self.n_sq) * pow(r, self.n, self.n_sq)) % self.n_sq
+   ```
+
+3. **Question**:  
+   *What if you wanted to perform a weighted addition of two encrypted values? Modify the code to allow multiplication of an encrypted value by a scalar before addition.*
+
+   **Hint**:  
+   Weighted addition can be achieved by multiplying the ciphertext by a scalar before combining the values.
+
+   **Modification**:
+   Modify the code to support multiplication of a ciphertext by a scalar.
+
+   ```python
+   def multiply_ciphertext_by_scalar(self, ciphertext, scalar):
+       return pow(ciphertext, scalar, self.n_sq)
+
+   # Example usage
+   weighted_ciphertext1 = multiply_ciphertext_by_scalar(ciphertext1, 2)  # Multiply ciphertext1 by 2
+   weighted_ciphertext_sum = (weighted_ciphertext1 * ciphertext2) % paillier.n_sq
+   ```
+
+4. **Question**:  
+   *How can you optimize the code to avoid recomputing large powers for common values like `g^plaintext mod n^2`?*
+
+   **Hint**:  
+   If you know you're going to encrypt the same values repeatedly, you can precompute values like `g^plaintext mod n^2` to speed up encryption.
+
+   **Modification**:
+   Precompute and store powers of `g` for common plaintext values.
+
+   ```python
+   precomputed_g_powers = {i: pow(paillier.g, i, paillier.n_sq) for i in range(100)}  # Precompute for values 0-99
+   
+   def encrypt(self, plaintext):
+       if plaintext in precomputed_g_powers:
+           g_power = precomputed_g_powers[plaintext]
+       else:
+           g_power = pow(self.g, plaintext, self.n_sq)
+       r = random.randint(1, self.n - 1)
+       while math.gcd(r, self.n) != 1:
+           r = random.randint(1, self.n - 1)
+       return (g_power * pow(r, self.n, self.n_sq)) % self.n_sq
+   ```
+
+---
+
+### **For RSA Encryption (Multiplication Homomorphism)**:
+
+1. **Question**:  
+   *How would you handle very large plaintext values that are greater than `n`? Modify the code to handle plaintexts larger than `n`.*
+
+   **Hint**:  
+   RSA cannot encrypt values larger than `n`, as the modulus `n` bounds the plaintext. To handle this, you can split the plaintext into smaller chunks or use modular arithmetic.
+
+   **Modification**:
+   Modify the code to split large plaintexts into smaller chunks.
+
+   ```python
+   def encrypt_large(plaintext, rsa):
+       encrypted_chunks = []
+       chunk_size = rsa.n.bit_length() // 8  # Max size of each chunk
+       while plaintext > 0:
+           chunk = plaintext % (2 ** chunk_size)
+           encrypted_chunks.append(rsa.encrypt(chunk))
+           plaintext = plaintext // (2 ** chunk_size)
+       return encrypted_chunks
+
+   # Example usage
+   large_plaintext = 12345678901234567890
+   encrypted_chunks = encrypt_large(large_plaintext, rsa)
+   ```
+
+2. **Question**:  
+   *What happens if the public exponent `e` is not 65537? Modify the code to accept an arbitrary public exponent `e`.*
+
+   **Hint**:  
+   The exponent `e` in RSA is commonly set to 65537, but other values can be used. Modify the RSA class to accept any value for `e` and ensure it's relatively prime to φ(n).
+
+   **Modification**:
+   Modify the RSA class to allow a custom public exponent `e`.
+
+   ```python
+   class RSA:
+       def __init__(self, e=65537, bit_length=512):
+           self.p, self.q = self.generate_prime(bit_length // 2), self.generate_prime(bit_length // 2)
+           self.n = self.p * self.q
+           self.phi_n = (self.p - 1) * (self.q - 1)
+           self.e = e
+           if math.gcd(self.e, self.phi_n) != 1:
+               raise ValueError("e must be coprime with φ(n)")
+           self.d = modinv(self.e, self.phi_n)
+
+   # Example usage with custom exponent
+   rsa = RSA(e=17)
+   ```
+
+3. **Question**:  
+   *What if you wanted to allow homomorphic exponentiation of ciphertext? Modify the code to raise a ciphertext to a power while preserving the homomorphic property.*
+
+   **Hint**:  
+   You can raise a ciphertext to a power by raising the encrypted value directly to that power under the modulus `n`.
+
+   **Modification**:
+   Modify the code to support ciphertext exponentiation.
+
+   ```python
+   def homomorphic_exponentiation(self, ciphertext, exponent):
+       return pow(ciphertext, exponent, self.n)
+
+   # Example usage
+   ciphertext_power = rsa.homomorphic_exponentiation(ciphertext1, 3)  # Raise ciphertext1 to power 3
+   ```
+
+4. **Question**:  
+   *What happens if you try to encrypt or decrypt the value 0? Modify the code to handle zero.*
+
+   **Hint**:  
+   RSA encryption typically doesn't handle 0 well because of how modular arithmetic works. You can modify the scheme to map 0 to a different value before encryption.
+
+   **Modification**:
+   Handle 0 by mapping it to a non-zero value before encryption.
+
+   ```python
+   def encrypt(self, plaintext):
+       if plaintext == 0:
+           plaintext = 1  # Map 0 to 1 to avoid issues
+       return mod_exp(plaintext, self.e, self.n)
+
+   def decrypt(self, ciphertext):
+       result = mod_exp(ciphertext, self.d, self.n)
+       if result == 1:  # Map back to 0
+           return 0
+       return result
+   ```
+
+---
+
+### **General Questions for Both Schemes**:
+
+1. **Question**:  
+   *What happens if a prime number fails the primality test during key generation? How would you handle such a failure in the code?*
+
+   **Hint**:  
+   Add error handling and retries during the prime generation process to ensure that a valid prime is selected.
+
+   **Modification**:
+   Add a retry mechanism for prime generation.
+
+   ```python
+   def generate_prime(self, bits):
+       while True:
+           try:
+               prime_candidate = random.getrandbits(bits)
+               if prime_candidate % 2 == 0:
+                   continue
+               if self.is_prime(prime_candidate):
+                   return prime_candidate
+           except Exception as e:
+               print(f"Prime generation failed, retrying... {e}")
+   ```
+
+2. **Question**:  
+   *What if you need to handle different bit lengths dynamically based on the security level? Modify the code to allow dynamic selection of bit length during initialization.*
+
+   **Hint**:  
+   Allow the user to pass in different bit lengths for key generation.
+
+   **Modification**:
+   Modify the classes to accept different bit lengths for RSA and Pa
